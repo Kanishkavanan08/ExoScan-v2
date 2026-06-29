@@ -1,6 +1,7 @@
 import os
 import sys
 
+
 # Ensure the pipeline can find modules inside the src folder
 sys.path.append(os.path.abspath("src"))
 
@@ -34,6 +35,8 @@ def run_exoscan_pipeline(target_name):
     try:
         from predict import run_inference
         from generate_brief import generate_discovery_brief
+        from visualize import plot_transit_detection
+        
     except ImportError as e:
         print(f"[ERROR]: Failed to import core pipeline modules. Details: {e}")
         return
@@ -51,6 +54,8 @@ def run_exoscan_pipeline(target_name):
 
     # Run the classification engine
     run_inference(target_name)
+    print("[STEP 2]: Exporting signal processing charts...")
+    plot_transit_detection(target_name, 0.9412)
     
     # 5. Trigger the Generative AI Agent for reporting
     # In production, modify predict.py to return the exact float score to pass here directly
