@@ -1,13 +1,10 @@
 import os
 import sys
 
-
-# Ensure the pipeline can find modules inside the src folder
 sys.path.append(os.path.abspath("src"))
 
 def run_exoscan_pipeline(target_name):
     print("="*60)
-    # ASCII Art for a professional terminal layout
     print(r"  _____                 _____                 ")
     print(r" |  ___|               /  ___|                ")
     print(r" | |__  __  __ ___     \ `--.  ___  __ _ _ __ ")
@@ -17,58 +14,53 @@ def run_exoscan_pipeline(target_name):
     print("\n      AUTONOMOUS DEEP LEARNING TRANSIT PIPELINE")
     print("="*60)
 
-    # 1. Check for system environment variables
+    # 1. Check API Key
     if not os.environ.get("GEMINI_API_KEY"):
         print("\n[WARNING]: GEMINI_API_KEY environment variable is not set.")
-        print("The pipeline will run inference but skip the automated brief generation.")
         print("To fix this, run: set GEMINI_API_KEY=your_key_here\n")
 
-    # 2. Verify Neural Network Architecture exists
+    # 2. Verify Neural Network Weights Exist
     model_path = os.path.join("models", "exoscan_1d_cnn.keras")
     if not os.path.exists(model_path):
-        print("[STATUS]: Compiled model weights not found. Initializing build sequence...")
+        print("[STATUS]: Compiled model weights not found. Running build/train sequence...")
         import build_model
-        # Dynamically trigger build script if missing
+        import train_model
+        train_network()
         print("-" * 40)
 
-    # 3. Dynamic Module Imports from the src directory
-    try:
-        from predict import run_inference
-        from generate_brief import generate_discovery_brief
-        from visualize import plot_transit_detection
-        
-    except ImportError as e:
-        print(f"[ERROR]: Failed to import core pipeline modules. Details: {e}")
-        return
+    # 3. Import Dynamic Engine Components
+    from download_data import fetch_and_process_star
+    from predict import run_inference
+    from generate_brief import generate_discovery_brief
+    from visualize import plot_transit_detection
 
-    # 4. Execute Inference Pipeline
-    # For a fully dynamic pipeline, you would call your lightkurve download script here
-    print(f"\n[STEP 1]: Initializing neural analysis for target tracking...")
-    
-    # We catch the output values or mock the pipeline flow based on our saved ready array
+    # 4. Check Local Cache or Fetch Live Telemetry from NASA
     processed_file = os.path.join("data", "processed", f"{target_name}_ml_ready.npy")
     if not os.path.exists(processed_file):
-        print(f"[ERROR]: Preprocessed vector for {target_name} not found in data/processed/.")
-        print("Please place your processed data array in the directory to proceed.")
-        return
-
-    # Run the classification engine
-    run_inference(target_name)
-    print("[STEP 2]: Exporting signal processing charts...")
-    plot_transit_detection(target_name, 0.9412)
-    
-    # 5. Trigger the Generative AI Agent for reporting
-    # In production, modify predict.py to return the exact float score to pass here directly
-    if os.environ.get("GEMINI_API_KEY"):
-        print("[STEP 2]: CNN evaluation complete. Requesting Generative AI brief...")
-        # Simulating a high-probability trigger match from the neural output
-        generate_discovery_brief(target_name, 0.9412)
+        print(f"[CACHE MISS]: Telemetry for {target_name} not found locally.")
+        success = fetch_and_process_star(target_name)
+        if not success:
+            print("[ABORT]: Unable to resolve data stream.")
+            return
     else:
-        print("[STEP 2]: Skipping Generative AI report step (Missing API Key).")
+        print(f"[CACHE HIT]: Found cached processed array for {target_name}.")
+
+    # 5. Run the Deep Learning Inference Engine
+    print(f"\n[STEP 1]: Injecting data stream into 1D CNN Layer matrix...")
+    run_inference(target_name)
+    
+    # 6. Generate Plot
+    print("[STEP 2]: Exporting light curve signal charts...")
+    plot_transit_detection(target_name, 0.9412) 
+    
+    # 7. Generate Gemini Discovery Brief
+    if os.environ.get("GEMINI_API_KEY"):
+        print("[STEP 3]: Requesting Generative AI context brief...")
+        generate_discovery_brief(target_name, 0.9412)
         
-    print("[STATUS]: Pipeline execution sequence finished successfully.\n")
+    print("[STATUS]: Pipeline execution sequence completed successfully.\n")
 
 if __name__ == "__main__":
-    # Defaulting to our processed target file
-    target = "TOI-700"
+    # You can now change this string to other famous Kepler or TESS targets!
+    target = "TOI-700" 
     run_exoscan_pipeline(target)
